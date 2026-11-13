@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="سامانه هوشمند مدیریت پروژه‌ها — نسخه حرفه‌ای">
+  <title>سامانه هوشمند مدیریت پروژه‌ها</title>
+  <link rel="stylesheet" href="assets/css/style.css">
+  <link rel="stylesheet" href="assets/css/responsive.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+</head>
+<body>
+  <div class="app-layout">
+    <!-- سایدبار -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-logo">سم</div>
+        <div class="sidebar-brand">
+          <h1>سامانه هوشمند</h1>
+          <span>مدیریت پروژه‌ها</span>
+        </div>
+      </div>
+      <nav class="sidebar-nav">
+        <div class="nav-section">
+          <div class="nav-section-title">اصلی</div>
+          <button class="nav-item active" data-page="dashboard">
+            <i data-lucide="layout-dashboard"></i><span>داشبورد مدیریتی</span>
+          </button>
+          <button class="nav-item" data-page="projects">
+            <i data-lucide="folder-kanban"></i><span>مدیریت پروژه‌ها</span>
+          </button>
+          <button class="nav-item" data-page="contracts">
+            <i data-lucide="file-text"></i><span>مدیریت قراردادها</span>
+          </button>
+        </div>
+        <div class="nav-section">
+          <div class="nav-section-title">ذینفعان</div>
+          <button class="nav-item" data-page="contractors">
+            <i data-lucide="hard-hat"></i><span>پیمانکاران</span>
+          </button>
+          <button class="nav-item" data-page="consultants">
+            <i data-lucide="briefcase"></i><span>مشاوران</span>
+          </button>
+        </div>
+        <div class="nav-section">
+          <div class="nav-section-title">اجرایی و مالی</div>
+          <button class="nav-item" data-page="finance">
+            <i data-lucide="wallet"></i><span>مدیریت مالی</span>
+          </button>
+          <button class="nav-item" data-page="progress">
+            <i data-lucide="trending-up"></i><span>پیشرفت فیزیکی</span>
+          </button>
+          <button class="nav-item" data-page="schedule">
+            <i data-lucide="calendar-clock"></i><span>زمان‌بندی</span>
+          </button>
+          <button class="nav-item" data-page="documents">
+            <i data-lucide="files"></i><span>اسناد و مدارک</span>
+          </button>
+        </div>
+        <div class="nav-section">
+          <div class="nav-section-title">تحلیل و گزارش</div>
+          <button class="nav-item" data-page="analytics">
+            <i data-lucide="brain"></i><span>تحلیل هوشمند</span>
+          </button>
+          <button class="nav-item" data-page="reports">
+            <i data-lucide="bar-chart-3"></i><span>گزارش‌های مدیریتی</span>
+          </button>
+        </div>
+        <div class="nav-section">
+          <div class="nav-section-title">سیستم</div>
+          <button class="nav-item" data-page="settings">
+            <i data-lucide="settings"></i><span>تنظیمات سامانه</span>
+          </button>
+        </div>
+      </nav>
+      <div class="sidebar-footer">
+        <button class="nav-item" id="btn-collapse-sidebar" title="جمع کردن منو">
+          <i data-lucide="panel-right-close"></i><span>جمع کردن منو</span>
+        </button>
+      </div>
+    </aside>
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+    <!-- محتوای اصلی -->
+    <div class="main-content">
+      <header class="topbar">
+        <div class="topbar-right">
+          <button class="btn-icon mobile-menu-btn" id="btn-mobile-menu">
+            <i data-lucide="menu"></i>
+          </button>
+          <h2 class="page-title" id="page-title">داشبورد مدیریتی</h2>
+        </div>
+        <div class="topbar-left">
+          <div class="search-box">
+            <i data-lucide="search"></i>
+            <input type="text" id="global-search" placeholder="جست‌وجوی سراسری...">
+          </div>
+          <div class="topbar-date" id="topbar-date">
+            <i data-lucide="calendar" style="width:14px;height:14px"></i>
+            <span id="today-date">—</span>
+          </div>
+          <button class="btn-icon" id="btn-notifications" title="اعلان‌ها">
+            <i data-lucide="bell"></i>
+            <span class="badge" id="notif-badge">۰</span>
+          </button>
+          <button class="btn-icon" id="btn-theme" title="تغییر تم">
+            <i data-lucide="moon"></i>
+          </button>
+          <div class="user-menu">
+            <div class="user-avatar">م</div>
+            <div class="user-info">
+              <div class="name">مدیر سیستم</div>
+              <div class="role">نسخه نمایشی</div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main class="page-content" id="page-content">
+        <!-- محتوا به صورت پویا بارگذاری می‌شود -->
+      </main>
+    </div>
+  </div>
+
+  <!-- مودال عمومی -->
+  <div class="modal-overlay" id="modal-overlay">
+    <div class="modal" id="modal">
+      <div class="modal-header">
+        <h2 id="modal-title">عنوان</h2>
+        <button class="btn-icon" id="modal-close"><i data-lucide="x"></i></button>
+      </div>
+      <div class="modal-body" id="modal-body"></div>
+      <div class="modal-footer" id="modal-footer"></div>
+    </div>
+  </div>
+
+  <!-- مودال تأیید -->
+  <div class="modal-overlay" id="confirm-modal">
+    <div class="modal" style="max-width:400px">
+      <div class="modal-header">
+        <h2>تأیید عملیات</h2>
+      </div>
+      <div class="modal-body">
+        <p id="confirm-message">آیا مطمئن هستید؟</p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-danger" id="confirm-ok">بله، ادامه</button>
+        <button class="btn btn-secondary" id="confirm-cancel">انصراف</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- توست -->
+  <div id="toast-container"></div>
+
+  <!-- اسکریپت‌ها -->
+  <script src="data/sample-data.js"></script>
+  <script src="assets/js/utilities.js"></script>
+  <script src="assets/js/database.js"></script>
+  <script src="assets/js/analytics.js"></script>
+  <script src="assets/js/app.js"></script>
+</body>
+</html>

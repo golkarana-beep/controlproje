@@ -1,0 +1,165 @@
+/* واکنش‌گرایی سامانه */
+
+@media (max-width: 1400px) {
+  .stats-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 1200px) {
+  .charts-grid {
+    grid-template-columns: 1fr;
+  }
+  .stats-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .form-row-3 {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 992px) {
+  :root {
+    --sidebar-width: 260px;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .search-box input {
+    width: 180px;
+  }
+  .search-box input:focus {
+    width: 200px;
+  }
+
+  .user-info { display: none; }
+}
+
+@media (max-width: 768px) {
+  .sidebar {
+    transform: translateX(100%);
+    width: var(--sidebar-width) !important;
+  }
+
+  .sidebar.mobile-open {
+    transform: translateX(0);
+  }
+
+  .sidebar.collapsed {
+    width: var(--sidebar-width) !important;
+  }
+
+  .sidebar.collapsed .nav-item span,
+  .sidebar.collapsed .sidebar-brand,
+  .sidebar.collapsed .nav-section-title {
+    display: block !important;
+    opacity: 1 !important;
+    width: auto !important;
+    height: auto !important;
+  }
+
+  .sidebar.collapsed .nav-item {
+    justify-content: flex-start;
+    padding: 10px 14px;
+  }
+
+  .main-content {
+    margin-right: 0 !important;
+  }
+
+  .topbar {
+    padding: 0 12px;
+  }
+
+  .page-content {
+    padding: 16px 12px;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .stat-card {
+    padding: 14px;
+  }
+
+  .stat-value {
+    font-size: 20px;
+  }
+
+  .form-row,
+  .form-row-3,
+  .detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .toolbar-right,
+  .toolbar-left {
+    flex-wrap: wrap;
+  }
+
+  .charts-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .chart-container {
+    height: 220px;
+  }
+
+  .modal {
+    width: 95%;
+    max-height: 95vh;
+  }
+
+  .topbar-date span:last-child {
+    display: none;
+  }
+
+  /* همبرگر موبایل */
+  .mobile-menu-btn {
+    display: flex !important;
+  }
+
+  .sidebar-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.4);
+    z-index: 999;
+  }
+
+  .sidebar-overlay.active {
+    display: block;
+  }
+}
+
+@media (max-width: 480px) {
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .page-title {
+    font-size: 14px;
+  }
+
+  .search-box {
+    display: none;
+  }
+
+  .stat-value {
+    font-size: 22px;
+  }
+}
+
+/* دکمه منوی موبایل — مخفی در دسکتاپ */
+.mobile-menu-btn {
+  display: none;
+}
