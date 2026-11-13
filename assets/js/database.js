@@ -21,6 +21,7 @@ const DB = {
     } else {
       this.loadSample();
     }
+    this.ensureUsers();
     return this.data;
   },
 
@@ -61,10 +62,89 @@ const DB = {
       contracts: [],
       contractors: [],
       consultants: [],
+      users: this.getDefaultUsers(),
       settings: { currency: 'ریال', theme: 'light', companyName: 'سامانه هوشمند مدیریت پروژه‌ها' }
     };
     this.save();
     Utils.showToast('تمام اطلاعات پاک شد', 'info');
+  },
+
+  getDefaultUsers() {
+    return [
+      {
+        id: 'usr-admin',
+        username: 'admin',
+        password: 'admin123',
+        name: 'مدیر سیستم',
+        role: 'admin',
+        active: true,
+        createdAt: '1403/01/01'
+      },
+      {
+        id: 'usr-manager',
+        username: 'manager',
+        password: 'manager123',
+        name: 'مدیر پروژه',
+        role: 'manager',
+        active: true,
+        createdAt: '1403/01/01'
+      },
+      {
+        id: 'usr-viewer',
+        username: 'viewer',
+        password: 'viewer123',
+        name: 'کاربر مشاهده‌گر',
+        role: 'viewer',
+        active: true,
+        createdAt: '1403/01/01'
+      }
+    ];
+  },
+
+  ensureUsers() {
+    if (!this.data.users || !Array.isArray(this.data.users) || this.data.users.length === 0) {
+      this.data.users = this.getDefaultUsers();
+      this.save();
+    }
+  },
+
+  getUsers() {
+    this.ensureUsers();
+    return this.data.users || [];
+  },
+
+  getUserById(id) {
+    return this.getUsers().find(u => u.id === id) || null;
+  },
+
+  getUserByUsername(username) {
+    return this.getUsers().find(u => u.username === username) || null;
+  },
+
+  addUser(user) {
+    this.ensureUsers();
+    if (!user.id) user.id = Utils.generateId('usr');
+    user.createdAt = Utils.getTodayJalali().formatted;
+    this.data.users.push(user);
+    this.save();
+    return user;
+  },
+
+  updateUser(id, updates) {
+    this.ensureUsers();
+    const idx = this.data.users.findIndex(u => u.id === id);
+    if (idx === -1) return null;
+    this.data.users[idx] = { ...this.data.users[idx], ...updates };
+    this.save();
+    return this.data.users[idx];
+  },
+
+  deleteUser(id) {
+    this.ensureUsers();
+    if (id === 'usr-admin') return false;
+    this.data.users = this.data.users.filter(u => u.id !== id);
+    this.save();
+    return true;
   },
 
   // --- پروژه‌ها ---

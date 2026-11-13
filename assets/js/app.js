@@ -8,16 +8,154 @@ const App = {
   pagination: { projects: 1, perPage: 10 },
   pricesCache: null,
   pricesTimer: null,
+  currentUser: null,
+
+  // نقش‌ها و دسترسی‌ها
+  ROLES: {
+    admin: { label: 'مدیر سیستم', level: 3, pages: ['*'] },
+    manager: { label: 'مدیر پروژه', level: 2, pages: ['dashboard','projects','contracts','contractors','consultants','finance','progress','schedule','documents','analytics','reports'] },
+    viewer: { label: 'مشاهده‌گر', level: 1, pages: ['dashboard','projects','contracts','analytics','reports'] }
+  },
 
   init() {
     DB.init();
+    this.applyTheme();
+    const session = this.getSession();
+    if (!session) {
+      this.showLogin();
+      return;
+    }
+    this.currentUser = session;
     this.bindEvents();
     this.updateDateTime();
     setInterval(() => this.updateDateTime(), 60000);
-    this.applyTheme();
+    this.updateUserUI();
+    this.applyRoleVisibility();
     this.navigate('dashboard');
     if (typeof lucide !== 'undefined') lucide.createIcons();
-    console.log('سامانه آماده است');
+    console.log('سامانه آماده است — کاربر:', this.currentUser.name);
+  },
+
+  updateUserUI() {
+    const nameEl = document.querySelector('.user-info .name');
+    const roleEl = document.querySelector('.user-info .role');
+    const avatarEl = document.querySelector('.user-avatar');
+    if (nameEl) nameEl.textContent = this.currentUser.name;
+    if (roleEl) roleEl.textContent = this.ROLES[this.currentUser.role]?.label || this.currentUser.role;
+    if (avatarEl) avatarEl.textContent = (this.currentUser.name || 'ک')[0];
+  },
+
+  applyRoleVisibility() {
+    // مخفی کردن منوهای غیرمجاز
+    document.querySelectorAll('.nav-item[data-page]').forEach(btn => {
+      const page = btn.dataset.page;
+      if (!this.canAccess(page)) {
+        btn.style.display = 'none';
+      } else {
+        btn.style.display = '';
+      }
+    });
+    // منوی کاربران فقط برای ادمین
+    const usersBtn = document.querySelector('.nav-item[data-page="users"]');
+    if (usersBtn) usersBtn.style.display = this.isAdmin() ? '' : 'none';
+  },
+
+  getSession() {
+    try {
+      const raw = localStorage.getItem('pms_session');
+      if (!raw) return null;
+      const user = JSON.parse(raw);
+      const dbUser = DB.getUserById(user.id);
+      if (!dbUser || !dbUser.active) return null;
+      return { id: dbUser.id, username: dbUser.username, name: dbUser.name, role: dbUser.role };
+    } catch { return null; }
+  },
+
+  setSession(user) {
+    localStorage.setItem('pms_session', JSON.stringify({
+      id: user.id, username: user.username, name: user.name, role: user.role
+    }));
+    this.currentUser = { id: user.id, username: user.username, name: user.name, role: user.role };
+  },
+
+  clearSession() {
+    localStorage.removeItem('pms_session');
+    this.currentUser = null;
+  },
+
+  canAccess(page) {
+    if (!this.currentUser) return false;
+    const role = this.ROLES[this.currentUser.role];
+    if (!role) return false;
+    if (role.pages.includes('*')) return true;
+    return role.pages.includes(page);
+  },
+
+  isAdmin() {
+    return this.currentUser && this.currentUser.role === 'admin';
+  },
+
+  showLogin() {
+    document.body.innerHTML = `
+      <div class="login-page">
+        <div class="login-card">
+          <div class="login-logo">سم</div>
+          <h1>سامانه هوشمند مدیریت پروژه‌ها</h1>
+          <p class="login-sub">ورود به سامانه</p>
+          <div class="login-error" id="login-error"></div>
+          <div class="form-group">
+            <label>نام کاربری</label>
+            <input type="text" class="form-control" id="login-username" placeholder="نام کاربری" autocomplete="username">
+          </div>
+          <div class="form-group">
+            <label>رمز عبور</label>
+            <input type="password" class="form-control" id="login-password" placeholder="رمز عبور" autocomplete="current-password">
+          </div>
+          <button class="btn-login" id="btn-login">ورود به سامانه</button>
+          <div class="login-hint">
+            <strong>کاربران نمونه:</strong><br>
+            admin / admin123 &nbsp;·&nbsp; manager / manager123 &nbsp;·&nbsp; viewer / viewer123
+          </div>
+        </div>
+      </div>`;
+    document.getElementById('btn-login')?.addEventListener('click', () => this.doLogin());
+    document.getElementById('login-password')?.addEventListener('keydown', e => {
+      if (e.key === 'Enter') this.doLogin();
+    });
+    document.getElementById('login-username')?.addEventListener('keydown', e => {
+      if (e.key === 'Enter') document.getElementById('login-password')?.focus();
+    });
+    setTimeout(() => document.getElementById('login-username')?.focus(), 100);
+  },
+
+  doLogin() {
+    const username = document.getElementById('login-username')?.value?.trim();
+    const password = document.getElementById('login-password')?.value;
+    const errEl = document.getElementById('login-error');
+    if (!username || !password) {
+      if (errEl) { errEl.textContent = 'نام کاربری و رمز عبور را وارد کنید'; errEl.classList.add('show'); }
+      return;
+    }
+    const user = DB.getUserByUsername(username);
+    if (!user || user.password !== password) {
+      if (errEl) { errEl.textContent = 'نام کاربری یا رمز عبور اشتباه است'; errEl.classList.add('show'); }
+      return;
+    }
+    if (!user.active) {
+      if (errEl) { errEl.textContent = 'این حساب غیرفعال شده است'; errEl.classList.add('show'); }
+      return;
+    }
+    this.setSession(user);
+    this.showApp();
+  },
+
+  logout() {
+    this.clearSession();
+    location.reload();
+  },
+
+  showApp() {
+    location.reload();
   },
 
 
@@ -29,14 +167,17 @@ const App = {
       document.getElementById('sidebar').classList.toggle('collapsed');
     });
     document.getElementById('btn-mobile-menu')?.addEventListener('click', () => {
-      document.getElementById('sidebar').classList.toggle('mobile-open');
-      document.getElementById('sidebar-overlay')?.classList.toggle('active');
+      const open = document.getElementById('sidebar').classList.toggle('mobile-open');
+      document.getElementById('sidebar-overlay')?.classList.toggle('active', open);
+      document.body.classList.toggle('sidebar-open', open);
     });
     document.getElementById('sidebar-overlay')?.addEventListener('click', () => {
       document.getElementById('sidebar')?.classList.remove('mobile-open');
       document.getElementById('sidebar-overlay')?.classList.remove('active');
+      document.body.classList.remove('sidebar-open');
     });
     document.getElementById('btn-theme')?.addEventListener('click', () => this.toggleTheme());
+    document.getElementById('btn-logout')?.addEventListener('click', () => this.logout());
     document.getElementById('modal-close')?.addEventListener('click', () => this.closeModal());
     document.getElementById('modal-overlay')?.addEventListener('click', e => {
       if (e.target === e.currentTarget) this.closeModal();
@@ -80,12 +221,14 @@ const App = {
     });
     document.getElementById('sidebar')?.classList.remove('mobile-open');
     document.getElementById('sidebar-overlay')?.classList.remove('active');
+    document.body.classList.remove('sidebar-open');
 
     const titles = {
       dashboard: 'داشبورد مدیریتی', projects: 'مدیریت پروژه‌ها', contracts: 'مدیریت قراردادها',
       contractors: 'مدیریت پیمانکاران', consultants: 'مدیریت مشاوران', finance: 'مدیریت مالی',
       progress: 'مدیریت پیشرفت فیزیکی', schedule: 'مدیریت زمان‌بندی', documents: 'مدیریت اسناد و مدارک',
-      analytics: 'تحلیل هوشمند', reports: 'گزارش‌های مدیریتی', settings: 'تنظیمات سامانه'
+      analytics: 'تحلیل هوشمند', reports: 'گزارش‌های مدیریتی', settings: 'تنظیمات سامانه',
+      users: 'مدیریت کاربران'
     };
     const titleEl = document.getElementById('page-title');
     if (titleEl) titleEl.textContent = titles[page] || page;
@@ -101,6 +244,12 @@ const App = {
     if (!content) return;
     content.innerHTML = '';
 
+    if (!this.canAccess(page)) {
+      content.innerHTML = `<div class="empty-state"><h3>دسترسی مجاز نیست</h3><p style="color:var(--text-muted);margin-top:8px">شما مجوز مشاهده این بخش را ندارید.</p></div>`;
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+      return;
+    }
+
     const map = {
       dashboard: () => this.renderDashboard(),
       projects: () => this.renderProjects(),
@@ -113,7 +262,8 @@ const App = {
       documents: () => this.renderDocuments(),
       analytics: () => this.renderAnalytics(),
       reports: () => this.renderReports(),
-      settings: () => this.renderSettings()
+      settings: () => this.renderSettings(),
+      users: () => this.renderUsers()
     };
     if (map[page]) map[page]();
     else content.innerHTML = '<div class="empty-state"><h3>صفحه در حال توسعه</h3></div>';
@@ -357,7 +507,15 @@ const App = {
           animation: animOpts,
           plugins: {
             legend: { position: 'bottom', labels: { padding: 16, usePointStyle: true, font: { size: 12 } } },
-            tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${Utils.toPersianDigits(ctx.raw)}` } }
+            tooltip: {
+              callbacks: {
+                label: ctx => {
+                  const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                  const pct = total ? Math.round((ctx.raw / total) * 100) : 0;
+                  return ` ${ctx.label}: ${Utils.toPersianDigits(ctx.raw)} مورد (${Utils.toPersianDigits(pct)}٪)`;
+                }
+              }
+            }
           },
           onClick: (evt, elements) => {
             if (elements.length > 0) {
@@ -392,7 +550,15 @@ const App = {
           animation: animOpts,
           plugins: {
             legend: { display: false },
-            tooltip: { callbacks: { label: ctx => ` ${Utils.toPersianDigits(ctx.raw)}` } }
+            tooltip: {
+              callbacks: {
+                label: ctx => {
+                  const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                  const pct = total ? Math.round((ctx.raw / total) * 100) : 0;
+                  return ` ${Utils.toPersianDigits(ctx.raw)} مورد (${Utils.toPersianDigits(pct)}٪)`;
+                }
+              }
+            }
           },
           scales: {
             x: { grid: { display: false } },
@@ -457,7 +623,15 @@ const App = {
           animation: animOpts,
           plugins: {
             legend: { position: 'bottom', labels: { padding: 12, usePointStyle: true, font: { size: 11 } } },
-            tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${Utils.toPersianDigits(ctx.raw)}` } }
+            tooltip: {
+              callbacks: {
+                label: ctx => {
+                  const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                  const pct = total ? Math.round((ctx.raw / total) * 100) : 0;
+                  return ` ${ctx.label}: ${Utils.toPersianDigits(ctx.raw)} مورد (${Utils.toPersianDigits(pct)}٪)`;
+                }
+              }
+            }
           },
           scales: { r: { grid: { color: gridColor }, ticks: { display: false } } },
           onClick: (evt, elements) => {
@@ -1198,6 +1372,139 @@ const App = {
         </div>
       </div>`;
     if (typeof lucide !== 'undefined') lucide.createIcons();
+  },
+
+  renderUsers() {
+    if (!this.isAdmin()) {
+      document.getElementById('page-content').innerHTML = '<div class="empty-state"><h3>فقط مدیر سیستم به این بخش دسترسی دارد</h3></div>';
+      return;
+    }
+    const users = DB.getUsers();
+    const roleLabels = { admin: 'مدیر سیستم', manager: 'مدیر پروژه', viewer: 'مشاهده‌گر' };
+    const roleBadge = { admin: 'danger', manager: 'info', viewer: '' };
+
+    document.getElementById('page-content').innerHTML = `
+      <div class="toolbar">
+        <div class="toolbar-right">
+          <button class="btn btn-primary" onclick="App.showUserForm()">
+            <i data-lucide="user-plus" style="width:16px;height:16px"></i> کاربر جدید
+          </button>
+        </div>
+        <div class="toolbar-left">
+          <span style="font-size:13px;color:var(--text-muted)">${Utils.toPersianDigits(users.length)} کاربر</span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-body" style="padding:0">
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>نام</th>
+                  <th>نام کاربری</th>
+                  <th>نقش / سطح دسترسی</th>
+                  <th>وضعیت</th>
+                  <th>تاریخ ایجاد</th>
+                  <th>عملیات</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${users.map(u => `
+                  <tr>
+                    <td><strong>${u.name}</strong></td>
+                    <td dir="ltr" style="text-align:right">${u.username}</td>
+                    <td><span class="badge ${roleBadge[u.role] || ''}">${roleLabels[u.role] || u.role}</span></td>
+                    <td><span class="badge ${u.active ? 'success' : 'danger'}">${u.active ? 'فعال' : 'غیرفعال'}</span></td>
+                    <td>${Utils.toPersianDigits(u.createdAt || '—')}</td>
+                    <td>
+                      <button class="btn-icon" title="ویرایش" onclick="App.showUserForm('${u.id}')"><i data-lucide="pencil" style="width:16px;height:16px"></i></button>
+                      ${u.id !== 'usr-admin' ? `<button class="btn-icon" title="حذف" onclick="App.deleteUser('${u.id}')"><i data-lucide="trash-2" style="width:16px;height:16px"></i></button>` : ''}
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="card" style="margin-top:20px">
+        <div class="card-header"><h3>توضیح سطوح دسترسی</h3></div>
+        <div class="card-body" style="font-size:13px;line-height:2;color:var(--text-secondary)">
+          <p><strong>مدیر سیستم (admin):</strong> دسترسی کامل به همه بخش‌ها از جمله مدیریت کاربران</p>
+          <p><strong>مدیر پروژه (manager):</strong> دسترسی به داشبورد، پروژه‌ها، قراردادها، مالی، پیشرفت و گزارش‌ها</p>
+          <p><strong>مشاهده‌گر (viewer):</strong> فقط مشاهده داشبورد، پروژه‌ها، قراردادها و گزارش‌ها</p>
+        </div>
+      </div>`;
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  },
+
+  showUserForm(id) {
+    const u = id ? DB.getUserById(id) : null;
+    const body = `
+      <div class="form-group"><label>نام کامل</label><input class="form-control" id="user-name" value="${u?.name || ''}"></div>
+      <div class="form-group"><label>نام کاربری</label><input class="form-control" id="user-username" value="${u?.username || ''}" ${u ? 'readonly' : ''} dir="ltr" style="text-align:left"></div>
+      <div class="form-group"><label>رمز عبور ${u ? '(خالی بگذارید اگر نمی‌خواهید تغییر کند)' : ''}</label><input type="password" class="form-control" id="user-password" dir="ltr" style="text-align:left"></div>
+      <div class="form-group"><label>نقش / سطح دسترسی</label>
+        <select class="form-control" id="user-role">
+          <option value="admin" ${u?.role === 'admin' ? 'selected' : ''}>مدیر سیستم</option>
+          <option value="manager" ${u?.role === 'manager' ? 'selected' : ''}>مدیر پروژه</option>
+          <option value="viewer" ${u?.role === 'viewer' || !u ? 'selected' : ''}>مشاهده‌گر</option>
+        </select>
+      </div>
+      <div class="form-group"><label>وضعیت</label>
+        <select class="form-control" id="user-active">
+          <option value="1" ${!u || u.active ? 'selected' : ''}>فعال</option>
+          <option value="0" ${u && !u.active ? 'selected' : ''}>غیرفعال</option>
+        </select>
+      </div>`;
+    this.openModal(u ? 'ویرایش کاربر' : 'کاربر جدید', body, `
+      <button class="btn btn-primary" onclick="App.saveUser('${id || ''}')">ذخیره</button>
+      <button class="btn btn-secondary" onclick="App.closeModal()">انصراف</button>`);
+  },
+
+  saveUser(id) {
+    const name = document.getElementById('user-name')?.value?.trim();
+    const username = document.getElementById('user-username')?.value?.trim();
+    const password = document.getElementById('user-password')?.value;
+    const role = document.getElementById('user-role')?.value;
+    const active = document.getElementById('user-active')?.value === '1';
+
+    if (!name || !username) {
+      Utils.showToast('نام و نام کاربری الزامی است', 'error');
+      return;
+    }
+    if (!id && !password) {
+      Utils.showToast('رمز عبور برای کاربر جدید الزامی است', 'error');
+      return;
+    }
+    if (!id && DB.getUserByUsername(username)) {
+      Utils.showToast('این نام کاربری قبلاً ثبت شده', 'error');
+      return;
+    }
+
+    if (id) {
+      const updates = { name, role, active };
+      if (password) updates.password = password;
+      DB.updateUser(id, updates);
+      Utils.showToast('کاربر به‌روزرسانی شد', 'success');
+    } else {
+      DB.addUser({ username, password, name, role, active });
+      Utils.showToast('کاربر ایجاد شد', 'success');
+    }
+    this.closeModal();
+    this.renderUsers();
+  },
+
+  async deleteUser(id) {
+    if (id === 'usr-admin') {
+      Utils.showToast('مدیر اصلی قابل حذف نیست', 'error');
+      return;
+    }
+    if (await Utils.confirmAction('این کاربر حذف شود؟')) {
+      DB.deleteUser(id);
+      Utils.showToast('حذف شد', 'success');
+      this.renderUsers();
+    }
   },
 
   saveSettings() {
