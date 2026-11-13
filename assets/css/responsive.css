@@ -1,4 +1,4 @@
-/* واکنش‌گرایی سامانه */
+/* واکنش‌گرایی سامانه — نسخه بهبود یافته موبایل */
 
 @media (max-width: 1400px) {
   .stats-grid {
@@ -13,8 +13,14 @@
   .stats-grid {
     grid-template-columns: repeat(3, 1fr);
   }
+  .stats-grid-finance {
+    grid-template-columns: repeat(3, 1fr);
+  }
   .form-row-3 {
     grid-template-columns: 1fr 1fr;
+  }
+  .prices-grid {
+    grid-template-columns: repeat(3, 1fr);
   }
 }
 
@@ -28,19 +34,26 @@
   }
 
   .search-box input {
-    width: 180px;
+    width: 160px;
   }
   .search-box input:focus {
-    width: 200px;
+    width: 180px;
   }
 
   .user-info { display: none; }
+
+  .prices-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
 }
 
 @media (max-width: 768px) {
   .sidebar {
     transform: translateX(100%);
     width: var(--sidebar-width) !important;
+    z-index: 1000;
+    box-shadow: -4px 0 24px rgba(0,0,0,0.15);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .sidebar.mobile-open {
@@ -67,17 +80,20 @@
 
   .main-content {
     margin-right: 0 !important;
+    width: 100%;
   }
 
   .topbar {
     padding: 0 12px;
+    height: 56px;
   }
 
   .page-content {
-    padding: 16px 12px;
+    padding: 14px 12px 80px;
   }
 
-  .stats-grid {
+  .stats-grid,
+  .stats-grid-finance {
     grid-template-columns: 1fr 1fr;
     gap: 10px;
   }
@@ -99,24 +115,32 @@
   .toolbar {
     flex-direction: column;
     align-items: stretch;
+    gap: 10px;
   }
 
   .toolbar-right,
   .toolbar-left {
     flex-wrap: wrap;
+    gap: 8px;
   }
 
   .charts-grid {
     grid-template-columns: 1fr;
+    gap: 14px;
   }
 
   .chart-container {
-    height: 220px;
+    height: 240px;
+  }
+
+  .chart-card {
+    padding: 16px;
   }
 
   .modal {
     width: 95%;
-    max-height: 95vh;
+    max-height: 92vh;
+    margin: 4vh auto;
   }
 
   .topbar-date span:last-child {
@@ -132,22 +156,86 @@
     display: none;
     position: fixed;
     inset: 0;
-    background: rgba(0,0,0,0.4);
+    background: rgba(0,0,0,0.45);
     z-index: 999;
+    backdrop-filter: blur(2px);
+    transition: opacity 0.25s;
   }
 
   .sidebar-overlay.active {
     display: block;
   }
+
+  .prices-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+
+  .price-card {
+    padding: 12px;
+  }
+
+  .price-card .price-value {
+    font-size: 16px;
+  }
+
+  .page-title {
+    font-size: 15px;
+    max-width: 160px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* جداول افقی اسکرول‌پذیر */
+  .table-wrapper {
+    margin: 0 -4px;
+    border-radius: var(--radius-sm);
+  }
+
+  table {
+    min-width: 640px;
+  }
+
+  /* کارت‌های آمار در موبایل فشرده‌تر */
+  .stat-icon {
+    width: 36px;
+    height: 36px;
+  }
+
+  .stat-icon i {
+    width: 18px;
+    height: 18px;
+  }
+
+  /* جلوگیری از زوم ناخواسته روی اینپوت‌ها در iOS */
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+
+  .fab-mobile {
+    display: flex;
+  }
+
+  /* بهبود تاچ */
+  .nav-item, .btn, .btn-icon, .stat-card, .price-card, .chart-detail-item {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .btn, .nav-item {
+    min-height: 44px;
+  }
 }
 
 @media (max-width: 480px) {
-  .stats-grid {
+  .stats-grid,
+  .stats-grid-finance {
     grid-template-columns: 1fr;
   }
 
   .page-title {
     font-size: 14px;
+    max-width: 130px;
   }
 
   .search-box {
@@ -157,9 +245,57 @@
   .stat-value {
     font-size: 22px;
   }
+
+  .prices-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .topbar-left {
+    gap: 6px;
+  }
+
+  .user-avatar {
+    width: 32px;
+    height: 32px;
+    font-size: 13px;
+  }
+
+  .chart-container {
+    height: 220px;
+  }
+
+  .prices-header h3 {
+    font-size: 13px;
+  }
 }
 
 /* دکمه منوی موبایل — مخفی در دسکتاپ */
 .mobile-menu-btn {
   display: none;
+}
+
+/* پشتیبانی از orientation landscape موبایل */
+@media (max-width: 900px) and (orientation: landscape) {
+  .sidebar {
+    width: 240px !important;
+  }
+  .chart-container {
+    height: 200px;
+  }
+  .page-content {
+    padding-bottom: 24px;
+  }
+}
+
+/* بهبود دسترسی لمسی کلی */
+@media (hover: none) and (pointer: coarse) {
+  .stat-card:hover,
+  .price-card:hover,
+  .chart-card:hover {
+    transform: none;
+  }
+  .nav-item:active,
+  .btn:active {
+    opacity: 0.85;
+  }
 }

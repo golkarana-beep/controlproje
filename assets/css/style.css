@@ -862,6 +862,10 @@ tbody tr:hover {
 }
 
 /* ========== نمودارها ========== */
+.stats-grid-finance {
+  grid-template-columns: repeat(5, 1fr);
+}
+
 .charts-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -1064,3 +1068,323 @@ tbody tr:hover {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+/* ========== انیمیشن‌ها و موشن گرافیک ========== */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.92); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes pulseSoft {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.03); }
+}
+
+@keyframes floatY {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+@keyframes lightSweep {
+  0% { transform: translateX(-120%) skewX(-15deg); opacity: 0; }
+  20% { opacity: 0.55; }
+  50% { opacity: 0.35; }
+  100% { transform: translateX(220%) skewX(-15deg); opacity: 0; }
+}
+
+@keyframes glowPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(13, 148, 136, 0); }
+  50% { box-shadow: 0 0 20px 2px rgba(13, 148, 136, 0.25); }
+}
+
+@keyframes tickerScroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.stat-card {
+  animation: fadeUp 0.5s ease both;
+}
+.stat-card:nth-child(1) { animation-delay: 0.05s; }
+.stat-card:nth-child(2) { animation-delay: 0.1s; }
+.stat-card:nth-child(3) { animation-delay: 0.15s; }
+.stat-card:nth-child(4) { animation-delay: 0.2s; }
+.stat-card:nth-child(5) { animation-delay: 0.25s; }
+.stat-card:nth-child(6) { animation-delay: 0.3s; }
+.stat-card:nth-child(7) { animation-delay: 0.35s; }
+.stat-card:nth-child(8) { animation-delay: 0.4s; }
+.stat-card:nth-child(9) { animation-delay: 0.45s; }
+.stat-card:nth-child(10) { animation-delay: 0.5s; }
+
+.chart-card {
+  position: relative;
+  overflow: hidden;
+  animation: scaleIn 0.55s ease both;
+  transition: box-shadow 0.3s ease, transform 0.3s ease;
+}
+.chart-card:nth-child(1) { animation-delay: 0.15s; }
+.chart-card:nth-child(2) { animation-delay: 0.25s; }
+.chart-card:nth-child(3) { animation-delay: 0.35s; }
+.chart-card:nth-child(4) { animation-delay: 0.45s; }
+
+.chart-card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+/* لایه نور متحرک روی نمودار */
+.chart-card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 45%;
+  height: 100%;
+  background: linear-gradient(
+    105deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.08) 35%,
+    rgba(255, 255, 255, 0.22) 50%,
+    rgba(255, 255, 255, 0.08) 65%,
+    transparent 100%
+  );
+  pointer-events: none;
+  animation: lightSweep 4.5s ease-in-out infinite;
+  animation-delay: 1.2s;
+  z-index: 2;
+}
+
+[data-theme="dark"] .chart-card::after {
+  background: linear-gradient(
+    105deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.03) 35%,
+    rgba(255, 255, 255, 0.12) 50%,
+    rgba(255, 255, 255, 0.03) 65%,
+    transparent 100%
+  );
+}
+
+.chart-container {
+  position: relative;
+  z-index: 1;
+}
+
+/* بخش قیمت‌های روز */
+.prices-section {
+  margin-bottom: 24px;
+  animation: fadeUp 0.5s ease both;
+  animation-delay: 0.1s;
+}
+
+.prices-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.prices-header h3 {
+  font-size: 14px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+
+.prices-header .live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--success);
+  background: var(--success-soft);
+  padding: 4px 10px;
+  border-radius: 20px;
+}
+
+.prices-header .live-badge::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  background: var(--success);
+  border-radius: 50%;
+  animation: pulseSoft 1.5s ease infinite;
+}
+
+.prices-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+}
+
+.price-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  position: relative;
+  overflow: hidden;
+  animation: scaleIn 0.4s ease both;
+}
+
+.price-card:nth-child(1) { animation-delay: 0.1s; }
+.price-card:nth-child(2) { animation-delay: 0.15s; }
+.price-card:nth-child(3) { animation-delay: 0.2s; }
+.price-card:nth-child(4) { animation-delay: 0.25s; }
+.price-card:nth-child(5) { animation-delay: 0.3s; }
+.price-card:nth-child(6) { animation-delay: 0.35s; }
+
+.price-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-md);
+}
+
+.price-card .price-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-weight: 500;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.price-card .price-value {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--text);
+  letter-spacing: -0.3px;
+  direction: ltr;
+  text-align: right;
+}
+
+.price-card .price-unit {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 500;
+  margin-top: 2px;
+}
+
+.price-card .price-change {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 6px;
+}
+
+.price-card .price-change.up {
+  background: var(--success-soft);
+  color: var(--success);
+}
+
+.price-card .price-change.down {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.price-card .price-change.neutral {
+  background: var(--bg-hover);
+  color: var(--text-muted);
+}
+
+.price-card.loading .price-value {
+  height: 22px;
+  width: 70%;
+  background: linear-gradient(90deg, var(--border-light) 25%, var(--border) 50%, var(--border-light) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.2s infinite;
+  border-radius: 4px;
+}
+
+/* لیست پروژه‌های کلیک‌شده از نمودار */
+.chart-detail-list {
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+.chart-detail-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border-light);
+  cursor: pointer;
+  transition: background 0.2s;
+  gap: 12px;
+}
+
+.chart-detail-item:hover {
+  background: var(--bg-hover);
+}
+
+.chart-detail-item:last-child {
+  border-bottom: none;
+}
+
+.chart-detail-item .item-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.chart-detail-item .item-title {
+  font-weight: 600;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chart-detail-item .item-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* بهبود جدول برای موبایل */
+.table-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* انیمیشن ورود کارت‌ها */
+.card {
+  animation: fadeUp 0.45s ease both;
+}
+
+/* دکمه شناور موبایل (اختیاری) */
+.fab-mobile {
+  display: none;
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: white;
+  border: none;
+  box-shadow: 0 4px 16px rgba(13, 148, 136, 0.4);
+  z-index: 900;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.fab-mobile:active {
+  transform: scale(0.92);
+}

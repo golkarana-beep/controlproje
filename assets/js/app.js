@@ -6,6 +6,8 @@ const App = {
   charts: {},
   filters: { projects: {}, contracts: {} },
   pagination: { projects: 1, perPage: 10 },
+  pricesCache: null,
+  pricesTimer: null,
 
   init() {
     DB.init();
@@ -17,6 +19,7 @@ const App = {
     if (typeof lucide !== 'undefined') lucide.createIcons();
     console.log('سامانه آماده است');
   },
+
 
   bindEvents() {
     document.querySelectorAll('.nav-item[data-page]').forEach(btn => {
@@ -89,6 +92,10 @@ const App = {
 
     Object.values(this.charts).forEach(c => { try { c.destroy(); } catch(e){} });
     this.charts = {};
+    if (this.pricesTimer && page !== 'dashboard') {
+      clearInterval(this.pricesTimer);
+      this.pricesTimer = null;
+    }
 
     const content = document.getElementById('page-content');
     if (!content) return;
@@ -118,6 +125,22 @@ const App = {
     const attention = DB.getAttentionProjects();
     const content = document.getElementById('page-content');
     content.innerHTML = `
+      <!-- بخش قیمت‌های روز بازار ایران -->
+      <div class="prices-section" id="prices-section">
+        <div class="prices-header">
+          <h3><i data-lucide="trending-up" style="width:18px;height:18px"></i> قیمت‌های روز بازار ایران</h3>
+          <span class="live-badge" id="prices-live-badge">در حال بارگذاری...</span>
+        </div>
+        <div class="prices-grid" id="prices-grid">
+          ${['دلار آزاد','یورو','طلای ۱۸ عیار','سکه امامی','تتر','انس طلا'].map((label,i) => `
+            <div class="price-card loading" data-idx="${i}">
+              <div class="price-label">${label}</div>
+              <div class="price-value"></div>
+              <div class="price-unit">تومان</div>
+            </div>`).join('')}
+        </div>
+      </div>
+
       <div class="stats-grid">
         <div class="stat-card"><div class="stat-icon"><i data-lucide="folder-kanban"></i></div>
           <div class="stat-value">${Utils.toPersianDigits(stats.total)}</div><div class="stat-label">کل پروژه‌ها</div></div>
@@ -130,7 +153,7 @@ const App = {
         <div class="stat-card danger"><div class="stat-icon"><i data-lucide="pause-circle"></i></div>
           <div class="stat-value">${Utils.toPersianDigits(stats.stopped)}</div><div class="stat-label">متوقف‌شده</div></div>
       </div>
-      <div class="stats-grid" style="grid-template-columns:repeat(5,1fr);margin-bottom:24px">
+      <div class="stats-grid stats-grid-finance" style="margin-bottom:24px">
         <div class="stat-card"><div class="stat-icon"><i data-lucide="landmark"></i></div>
           <div class="stat-value" style="font-size:18px">${Utils.formatMoneyShort(stats.totalBudget)}</div><div class="stat-label">بودجه مصوب کل</div></div>
         <div class="stat-card"><div class="stat-icon"><i data-lucide="file-signature"></i></div>
@@ -143,10 +166,10 @@ const App = {
           <div class="stat-value">${Utils.formatPercent(stats.avgFinancial)}</div><div class="stat-label">میانگین پیشرفت مالی</div></div>
       </div>
       <div class="charts-grid">
-        <div class="chart-card"><h3>وضعیت پروژه‌ها</h3><div class="chart-container"><canvas id="chart-status"></canvas></div></div>
-        <div class="chart-card"><h3>توزیع بر اساس نوع پروژه</h3><div class="chart-container"><canvas id="chart-type"></canvas></div></div>
+        <div class="chart-card"><h3>وضعیت پروژه‌ها <small style="font-weight:400;color:var(--text-muted);font-size:11px">(کلیک برای جزئیات)</small></h3><div class="chart-container"><canvas id="chart-status"></canvas></div></div>
+        <div class="chart-card"><h3>توزیع بر اساس نوع پروژه <small style="font-weight:400;color:var(--text-muted);font-size:11px">(کلیک برای جزئیات)</small></h3><div class="chart-container"><canvas id="chart-type"></canvas></div></div>
         <div class="chart-card"><h3>مقایسه پیشرفت فیزیکی و مالی</h3><div class="chart-container"><canvas id="chart-progress"></canvas></div></div>
-        <div class="chart-card"><h3>توزیع بر اساس منطقه</h3><div class="chart-container"><canvas id="chart-region"></canvas></div></div>
+        <div class="chart-card"><h3>توزیع بر اساس منطقه <small style="font-weight:400;color:var(--text-muted);font-size:11px">(کلیک برای جزئیات)</small></h3><div class="chart-container"><canvas id="chart-region"></canvas></div></div>
       </div>
       <div class="card">
         <div class="card-header"><h3><i data-lucide="alert-circle" style="width:18px;height:18px"></i> پروژه‌های نیازمند توجه</h3></div>
@@ -174,6 +197,129 @@ const App = {
       </div>`;
     if (typeof lucide !== 'undefined') lucide.createIcons();
     this.renderDashboardCharts();
+    this.loadMarketPrices();
+  },
+
+  async loadMarketPrices() {
+    const grid = document.getElementById('prices-grid');
+    const badge = document.getElementById('prices-live-badge');
+    if (!grid) return;
+
+    const symbols = [
+      { key: 'usd', label: 'دلار آزاد', unit: 'تومان', icon: 'dollar-sign' },
+      { key: 'euro', label: 'یورو', unit: 'تومان', icon: 'euro' },
+      { key: 'gold-18k', label: 'طلای ۱۸ عیار', unit: 'تومان / گرم', icon: 'gem' },
+      { key: 'coin-emami', label: 'سکه امامی', unit: 'تومان', icon: 'coins' },
+      { key: 'tether', label: 'تتر (USDT)', unit: 'تومان', icon: 'circle-dollar-sign' },
+      { key: 'gold-ounce', label: 'انس طلا', unit: 'دلار', icon: 'trophy' }
+    ];
+
+    const formatPrice = (val, isUsd = false) => {
+      if (val == null || isNaN(val)) return '—';
+      // قیمت‌ها معمولاً به ریال هستند؛ تبدیل به تومان
+      let num = Number(val);
+      if (!isUsd && num > 100000) num = Math.round(num / 10); // ریال → تومان
+      return Utils.toPersianDigits(num.toLocaleString('en-US'));
+    };
+
+    try {
+      const results = await Promise.allSettled(
+        symbols.map(s => fetch(`https://api.priceto.day/v1/latest/irr/${s.key}`).then(r => r.json()))
+      );
+
+      let html = '';
+      let okCount = 0;
+      results.forEach((res, i) => {
+        const sym = symbols[i];
+        let price = null, changeClass = 'neutral', changeText = '—';
+        if (res.status === 'fulfilled' && res.value && res.value.success) {
+          price = res.value.price;
+          okCount++;
+          if (res.value.high && res.value.low && price) {
+            const mid = (res.value.high + res.value.low) / 2;
+            if (price > mid * 1.002) { changeClass = 'up'; changeText = '▲'; }
+            else if (price < mid * 0.998) { changeClass = 'down'; changeText = '▼'; }
+            else { changeText = '●'; }
+          }
+        }
+        const isUsdUnit = sym.key === 'gold-ounce';
+        html += `
+          <div class="price-card" data-key="${sym.key}">
+            <span class="price-change ${changeClass}">${changeText}</span>
+            <div class="price-label"><i data-lucide="${sym.icon}" style="width:14px;height:14px"></i> ${sym.label}</div>
+            <div class="price-value">${formatPrice(price, isUsdUnit)}</div>
+            <div class="price-unit">${sym.unit}</div>
+          </div>`;
+      });
+
+      grid.innerHTML = html;
+      if (badge) {
+        badge.textContent = okCount > 0 ? `زنده · ${Utils.toPersianDigits(okCount)} مورد` : 'آفلاین';
+        badge.style.color = okCount > 0 ? '' : 'var(--warning)';
+        badge.style.background = okCount > 0 ? '' : 'var(--warning-soft)';
+      }
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+
+      // به‌روزرسانی هر ۵ دقیقه
+      if (this.pricesTimer) clearInterval(this.pricesTimer);
+      this.pricesTimer = setInterval(() => {
+        if (this.currentPage === 'dashboard') this.loadMarketPrices();
+      }, 5 * 60 * 1000);
+
+    } catch (e) {
+      console.warn('خطا در دریافت قیمت‌ها:', e);
+      // fallback نمونه
+      const fallback = [
+        { label: 'دلار آزاد', value: '۲۶۶٬۹۰۰', unit: 'تومان' },
+        { label: 'یورو', value: '۲۸۹٬۵۰۰', unit: 'تومان' },
+        { label: 'طلای ۱۸ عیار', value: '۱۴٬۸۵۰٬۰۰۰', unit: 'تومان / گرم' },
+        { label: 'سکه امامی', value: '۲۸۵٬۰۰۰٬۰۰۰', unit: 'تومان' },
+        { label: 'تتر', value: '۲۶۷٬۲۰۰', unit: 'تومان' },
+        { label: 'انس طلا', value: '۲٬۶۵۰', unit: 'دلار' }
+      ];
+      grid.innerHTML = fallback.map(f => `
+        <div class="price-card">
+          <div class="price-label">${f.label}</div>
+          <div class="price-value">${f.value}</div>
+          <div class="price-unit">${f.unit}</div>
+        </div>`).join('');
+      if (badge) {
+        badge.textContent = 'نمونه (آفلاین)';
+        badge.style.color = 'var(--warning)';
+        badge.style.background = 'var(--warning-soft)';
+      }
+    }
+  },
+
+  showChartProjects(filterType, filterValue) {
+    let projects = DB.getProjects();
+    let title = '';
+    if (filterType === 'status') {
+      projects = projects.filter(p => p.status === filterValue);
+      title = `پروژه‌های با وضعیت «${filterValue}»`;
+    } else if (filterType === 'type') {
+      projects = projects.filter(p => p.type === filterValue);
+      title = `پروژه‌های نوع «${filterValue}»`;
+    } else if (filterType === 'region') {
+      projects = projects.filter(p => p.region === filterValue);
+      title = `پروژه‌های منطقه «${filterValue}»`;
+    }
+
+    const body = projects.length === 0
+      ? '<p style="text-align:center;padding:30px;color:var(--text-muted)">موردی یافت نشد</p>'
+      : `<div class="chart-detail-list">${projects.map(p => `
+          <div class="chart-detail-item" onclick="App.closeModal();App.showProjectDetail('${p.id}')">
+            <div class="item-main">
+              <div class="item-title">${p.title}</div>
+              <div class="item-meta">${Utils.toPersianDigits(p.code)} · ${p.organization} · ${p.status}</div>
+            </div>
+            <div>
+              <span class="badge ${Utils.getStatusClass(p.status)}">${Utils.formatPercent(p.physicalProgress)}</span>
+            </div>
+          </div>`).join('')}</div>`;
+
+    this.openModal(title + ` (${Utils.toPersianDigits(projects.length)} مورد)`, body,
+      `<button class="btn btn-secondary" onclick="App.closeModal()">بستن</button>`, '');
   },
 
   renderDashboardCharts() {
@@ -184,24 +330,81 @@ const App = {
     Chart.defaults.font.family = 'Vazirmatn';
     Chart.defaults.color = textColor;
 
+    const animOpts = {
+      duration: 1400,
+      easing: 'easeOutQuart'
+    };
+
     const statusData = DB.getStatusDistribution();
+    const statusLabels = Object.keys(statusData);
     const statusColors = { 'فعال': '#059669', 'خاتمه‌یافته': '#2563eb', 'متوقف‌شده': '#dc2626', 'دارای تأخیر': '#d97706', 'در حال برنامه‌ریزی': '#64748b' };
     const el1 = document.getElementById('chart-status');
     if (el1) {
       this.charts.status = new Chart(el1, {
         type: 'doughnut',
-        data: { labels: Object.keys(statusData), datasets: [{ data: Object.values(statusData), backgroundColor: Object.keys(statusData).map(k => statusColors[k] || '#94a3b8'), borderWidth: 0 }] },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { padding: 16, usePointStyle: true, font: { size: 12 } } }, tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${Utils.toPersianDigits(ctx.raw)}` } } } }
+        data: {
+          labels: statusLabels,
+          datasets: [{
+            data: Object.values(statusData),
+            backgroundColor: statusLabels.map(k => statusColors[k] || '#94a3b8'),
+            borderWidth: 0,
+            hoverOffset: 12
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: animOpts,
+          plugins: {
+            legend: { position: 'bottom', labels: { padding: 16, usePointStyle: true, font: { size: 12 } } },
+            tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${Utils.toPersianDigits(ctx.raw)}` } }
+          },
+          onClick: (evt, elements) => {
+            if (elements.length > 0) {
+              const idx = elements[0].index;
+              App.showChartProjects('status', statusLabels[idx]);
+            }
+          }
+        }
       });
     }
 
     const typeData = DB.getTypeDistribution();
+    const typeLabels = Object.keys(typeData);
     const el2 = document.getElementById('chart-type');
     if (el2) {
       this.charts.type = new Chart(el2, {
         type: 'bar',
-        data: { labels: Object.keys(typeData), datasets: [{ label: 'تعداد', data: Object.values(typeData), backgroundColor: '#0d9488', borderRadius: 6, barThickness: 28 }] },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` ${Utils.toPersianDigits(ctx.raw)}` } } }, scales: { x: { grid: { display: false } }, y: { grid: { color: gridColor }, ticks: { stepSize: 1, callback: v => Utils.toPersianDigits(v) } } } }
+        data: {
+          labels: typeLabels,
+          datasets: [{
+            label: 'تعداد',
+            data: Object.values(typeData),
+            backgroundColor: '#0d9488',
+            borderRadius: 6,
+            barThickness: 28,
+            hoverBackgroundColor: '#0f766e'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: animOpts,
+          plugins: {
+            legend: { display: false },
+            tooltip: { callbacks: { label: ctx => ` ${Utils.toPersianDigits(ctx.raw)}` } }
+          },
+          scales: {
+            x: { grid: { display: false } },
+            y: { grid: { color: gridColor }, ticks: { stepSize: 1, callback: v => Utils.toPersianDigits(v) } }
+          },
+          onClick: (evt, elements) => {
+            if (elements.length > 0) {
+              const idx = elements[0].index;
+              App.showChartProjects('type', typeLabels[idx]);
+            }
+          }
+        }
       });
     }
 
@@ -210,21 +413,60 @@ const App = {
     if (el3) {
       this.charts.progress = new Chart(el3, {
         type: 'bar',
-        data: { labels: projects.map(p => p.code.replace('PRJ-', '')), datasets: [
-          { label: 'فیزیکی', data: projects.map(p => p.physicalProgress), backgroundColor: '#0d9488', borderRadius: 4, barThickness: 14 },
-          { label: 'مالی', data: projects.map(p => p.financialProgress), backgroundColor: '#2563eb', borderRadius: 4, barThickness: 14 }
-        ]},
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, font: { size: 11 } } }, tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${Utils.toPersianDigits(ctx.raw)}٪` } } }, scales: { x: { grid: { display: false } }, y: { max: 100, grid: { color: gridColor }, ticks: { callback: v => Utils.toPersianDigits(v) + '٪' } } } }
+        data: {
+          labels: projects.map(p => p.code.replace('PRJ-', '')),
+          datasets: [
+            { label: 'فیزیکی', data: projects.map(p => p.physicalProgress), backgroundColor: '#0d9488', borderRadius: 4, barThickness: 14 },
+            { label: 'مالی', data: projects.map(p => p.financialProgress), backgroundColor: '#2563eb', borderRadius: 4, barThickness: 14 }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: animOpts,
+          plugins: {
+            legend: { position: 'bottom', labels: { usePointStyle: true, font: { size: 11 } } },
+            tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${Utils.toPersianDigits(ctx.raw)}٪` } }
+          },
+          scales: {
+            x: { grid: { display: false } },
+            y: { max: 100, grid: { color: gridColor }, ticks: { callback: v => Utils.toPersianDigits(v) + '٪' } }
+          }
+        }
       });
     }
 
     const regionData = DB.getRegionDistribution();
+    const regionLabels = Object.keys(regionData);
     const el4 = document.getElementById('chart-region');
     if (el4) {
       this.charts.region = new Chart(el4, {
         type: 'polarArea',
-        data: { labels: Object.keys(regionData), datasets: [{ data: Object.values(regionData), backgroundColor: ['rgba(13,148,136,0.7)','rgba(37,99,235,0.7)','rgba(217,119,6,0.7)','rgba(220,38,38,0.7)','rgba(5,150,105,0.7)','rgba(139,92,246,0.7)','rgba(236,72,153,0.7)','rgba(14,165,233,0.7)','rgba(245,158,11,0.7)','rgba(99,102,241,0.7)'], borderWidth: 0 }] },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { padding: 12, usePointStyle: true, font: { size: 11 } } }, tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${Utils.toPersianDigits(ctx.raw)}` } } }, scales: { r: { grid: { color: gridColor }, ticks: { display: false } } } }
+        data: {
+          labels: regionLabels,
+          datasets: [{
+            data: Object.values(regionData),
+            backgroundColor: ['rgba(13,148,136,0.75)','rgba(37,99,235,0.75)','rgba(217,119,6,0.75)','rgba(220,38,38,0.75)','rgba(5,150,105,0.75)','rgba(139,92,246,0.75)','rgba(236,72,153,0.75)','rgba(14,165,233,0.75)','rgba(245,158,11,0.75)','rgba(99,102,241,0.75)'],
+            borderWidth: 0,
+            hoverOffset: 8
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: animOpts,
+          plugins: {
+            legend: { position: 'bottom', labels: { padding: 12, usePointStyle: true, font: { size: 11 } } },
+            tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${Utils.toPersianDigits(ctx.raw)}` } }
+          },
+          scales: { r: { grid: { color: gridColor }, ticks: { display: false } } },
+          onClick: (evt, elements) => {
+            if (elements.length > 0) {
+              const idx = elements[0].index;
+              App.showChartProjects('region', regionLabels[idx]);
+            }
+          }
+        }
       });
     }
   },
