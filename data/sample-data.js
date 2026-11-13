@@ -4,7 +4,9 @@
  */
 
 const SAMPLE_DATA = {
-  version: "1.0.0",
+  version: "2.0.0",
+  schemaVersion: 2,
+  companyId: "cmp-default",
   generatedAt: "1403-08-23",
 
   organizations: [

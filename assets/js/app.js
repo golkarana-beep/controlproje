@@ -17,15 +17,16 @@ const App = {
     viewer: { label: 'مشاهده‌گر', level: 1, pages: ['dashboard','projects','contracts','analytics','reports'] }
   },
 
-  init() {
-    DB.init();
+  async init() {
+    await DataStore.init();
     this.applyTheme();
-    const session = this.getSession();
+    const session = Auth.restore();
     if (!session) {
       this.showLogin();
       return;
     }
     this.currentUser = session;
+    this.ROLES = Auth.ROLES;
     this.bindEvents();
     this.updateDateTime();
     setInterval(() => this.updateDateTime(), 60000);
@@ -33,7 +34,7 @@ const App = {
     this.applyRoleVisibility();
     this.navigate('dashboard');
     if (typeof lucide !== 'undefined') lucide.createIcons();
-    console.log('سامانه آماده است — کاربر:', this.currentUser.name);
+    console.log('سامانه V2 آماده — کاربر:', this.currentUser.name, '| شرکت:', DataStore.getCompanyId());
   },
 
   updateUserUI() {
@@ -84,15 +85,11 @@ const App = {
   },
 
   canAccess(page) {
-    if (!this.currentUser) return false;
-    const role = this.ROLES[this.currentUser.role];
-    if (!role) return false;
-    if (role.pages.includes('*')) return true;
-    return role.pages.includes(page);
+    return Auth.canAccess(page);
   },
 
   isAdmin() {
-    return this.currentUser && this.currentUser.role === 'admin';
+    return Auth.isAdmin();
   },
 
   showLogin() {
@@ -136,22 +133,17 @@ const App = {
       if (errEl) { errEl.textContent = 'نام کاربری و رمز عبور را وارد کنید'; errEl.classList.add('show'); }
       return;
     }
-    const user = DB.getUserByUsername(username);
-    if (!user || user.password !== password) {
-      if (errEl) { errEl.textContent = 'نام کاربری یا رمز عبور اشتباه است'; errEl.classList.add('show'); }
+    const result = Auth.login(username, password);
+    if (!result.ok) {
+      if (errEl) { errEl.textContent = result.error; errEl.classList.add('show'); }
       return;
     }
-    if (!user.active) {
-      if (errEl) { errEl.textContent = 'این حساب غیرفعال شده است'; errEl.classList.add('show'); }
-      return;
-    }
-    this.setSession(user);
+    this.currentUser = result.user;
     this.showApp();
   },
 
   logout() {
-    this.clearSession();
-    location.reload();
+    Auth.logout();
   },
 
   showApp() {
